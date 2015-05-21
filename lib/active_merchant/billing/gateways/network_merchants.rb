@@ -150,11 +150,20 @@ module ActiveMerchant #:nodoc:
         post[:magnesafe_magneprint_status] = options[:magnesafe_magneprint_status]
       end
 
+      # this is different from an encrypted credit card track. instead, it is credt card data encrypted with the
+      # public key unique to each client SDK key.
+      def add_encrypted_creditcard_data(post, options)
+        if options[:encrypted_creditcard]
+          post[:encrypted_payment] = options[:encrypted_creditcard]
+        end
+      end
+
       def add_payment_method(post, payment_source, options)
         post[:processor_id] = options[:processor_id]
         post[:customer_vault] = 'add_customer' if options[:store]
 
         add_swipe_data(post, payment_source, options)
+        add_encrypted_creditcard_data(post, options)
 
         if payment_source.is_a?(Check)
           check = payment_source
