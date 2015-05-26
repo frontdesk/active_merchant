@@ -151,6 +151,8 @@ class NetworkMerchantsTest < Test::Unit::TestCase
       body.include?("billing_method=recurring")
     end.returns(successful_purchase_on_stored_card)
 
+    @options[:billing_method] = 'recurring'
+
     assert purchase = @gateway.purchase(@amount, 1200085822, @options)
     assert_success purchase
     assert_equal "SUCCESS", purchase.message
