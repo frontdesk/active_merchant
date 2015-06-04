@@ -161,6 +161,8 @@ module ActiveMerchant #:nodoc:
       def add_payment_method(post, payment_source, options)
         post[:processor_id] = options[:processor_id]
         post[:customer_vault] = 'add_customer' if options[:store]
+        post[:sec_code] = options[:sec_code] unless options[:sec_code].nil?
+        post[:billing_method] = options[:billing_method] if options[:billing_method]
 
         add_swipe_data(post, payment_source, options)
         add_encrypted_creditcard_data(post, options)
@@ -185,9 +187,8 @@ module ActiveMerchant #:nodoc:
           post[:payment] = 'creditcard'
         else
           post[:customer_vault_id] = payment_source
+          post[:cvv] = options[:cvv] if options[:cvv].present?
         end
-
-        post[:billing_method] = options[:billing_method]
       end
 
       def add_login(post)
