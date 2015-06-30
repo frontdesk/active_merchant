@@ -79,12 +79,14 @@ module ActiveMerchant #:nodoc:
       def build_void_post(authorization, options)
         post = {}
         post[:transactionid] = authorization
+        post[:payment] = options.fetch(:payment, 'creditcard')
         post
       end
 
       def build_refund_post(money, authorization, options)
         post = {}
         post[:transactionid] = authorization
+        post[:payment] = options.fetch(:payment, 'creditcard')
         add_amount(post, money, options)
         post
       end

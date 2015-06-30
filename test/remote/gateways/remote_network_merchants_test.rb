@@ -86,12 +86,33 @@ class RemoteNetworkMerchantsTest < Test::Unit::TestCase
     assert_equal "Transaction Void Successful", response.message
   end
 
+  def test_ach_void
+    assert purchase = @gateway.purchase(@amount, @check, @options)
+    assert_success purchase
+    assert purchase.authorization
+
+    assert response = @gateway.void(purchase.authorization, payment: 'check')
+    assert_success response
+    assert_equal "SUCCESS", response.message
+  end
+
   def test_refund
     assert purchase = @gateway.purchase(@amount, @credit_card, @options)
     assert_success purchase
     assert purchase.authorization
 
     assert response = @gateway.refund(50, purchase.authorization)
+    assert_success response
+    assert_equal "SUCCESS", response.message
+    assert response.authorization
+  end
+
+  def test_ach_refund
+    assert purchase = @gateway.purchase(@amount, @check, @options)
+    assert_success purchase
+    assert purchase.authorization
+
+    assert response = @gateway.refund(50, purchase.authorization, payment: 'check')
     assert_success response
     assert_equal "SUCCESS", response.message
     assert response.authorization
