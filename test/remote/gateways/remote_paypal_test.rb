@@ -4,19 +4,21 @@ class PaypalTest < Test::Unit::TestCase
   def setup
     @gateway = PaypalGateway.new(fixtures(:paypal_signature))
 
-    @credit_card = credit_card("4381258770269608") # Use a generated CC from the paypal Sandbox
+    @credit_card = credit_card('4381258770269608') # Use a generated CC from the paypal Sandbox
     @declined_card = credit_card('234234234234')
 
     @params = {
       :order_id => generate_unique_id,
       :email => 'buyer@jadedpallet.com',
-      :billing_address => { :name => 'Longbob Longsen',
-                    :address1 => '4321 Penny Lane',
-                    :city => 'Jonsetown',
-                    :state => 'NC',
-                    :country => 'US',
-                    :zip => '23456'
-                  } ,
+      :billing_address =>
+        {
+          :name => 'Longbob Longsen',
+          :address1 => '4321 Penny Lane',
+          :city => 'Jonsetown',
+          :state => 'NC',
+          :country => 'US',
+          :zip => '23456'
+        },
       :description => 'Stuff that you purchased, yo!',
       :ip => '10.0.0.1'
     }
@@ -27,13 +29,8 @@ class PaypalTest < Test::Unit::TestCase
     # each auth-id can only be reauthorized and tested once.
     # leave it commented if you don't want to test reauthorization.
     #
-    #@three_days_old_auth_id  = "9J780651TU4465545"
-    #@three_days_old_auth_id2 = "62503445A3738160X"
-  end
-
-  def test_dump_transcript
-    skip("Transcript scrubbing for this gateway has been tested.")
-    dump_transcript_and_fail(@gateway, @amount, @credit_card, @params)
+    # @three_days_old_auth_id  = "9J780651TU4465545"
+    # @three_days_old_auth_id2 = "62503445A3738160X"
   end
 
   def test_transcript_scrubbing
@@ -46,10 +43,24 @@ class PaypalTest < Test::Unit::TestCase
     assert_scrubbed(@credit_card.verification_value, transcript)
     assert_scrubbed(@gateway.options[:login], transcript)
     assert_scrubbed(@gateway.options[:password], transcript)
+    assert_scrubbed(@gateway.options[:signature], transcript)
   end
 
   def test_successful_purchase
     response = @gateway.purchase(@amount, @credit_card, @params)
+    assert_success response
+    assert response.params['transaction_id']
+  end
+
+  def test_successful_purchase_sans_cvv
+    @credit_card.verification_value = nil
+    response = @gateway.purchase(@amount, @credit_card, @params)
+    assert_success response
+    assert response.params['transaction_id']
+  end
+
+  def test_successful_purchase_with_descriptors
+    response = @gateway.purchase(@amount, @credit_card, @params.merge(soft_descriptor: 'Active Merchant TXN', soft_descriptor_city: '800-883-3931'))
     assert_success response
     assert response.params['transaction_id']
   end
@@ -107,7 +118,7 @@ class PaypalTest < Test::Unit::TestCase
   def test_successful_incomplete_captures
     auth = @gateway.authorize(100, @credit_card, @params)
     assert_success auth
-    response = @gateway.capture(60, auth.authorization, {:complete_type => "NotComplete"})
+    response = @gateway.capture(60, auth.authorization, {:complete_type => 'NotComplete'})
     assert_success response
     assert response.params['transaction_id']
     assert_equal '0.60', response.params['gross_amount']
@@ -117,13 +128,10 @@ class PaypalTest < Test::Unit::TestCase
     assert_equal '0.40', response_2.params['gross_amount']
   end
 
-  # NOTE THIS SETTING: http://skitch.com/jimmybaker/nysus/payment-receiving-preferences-paypal
-  # PayPal doesn't return the InvoiceID in the response, so I am unable to check for it. Looking at the transaction
-  # on PayPal's site will show "NEWID123" as the InvoiceID.
   def test_successful_capture_updating_the_invoice_id
     auth = @gateway.authorize(@amount, @credit_card, @params)
     assert_success auth
-    response = @gateway.capture(@amount, auth.authorization, :order_id => "NEWID123")
+    response = @gateway.capture(@amount, auth.authorization, :order_id => "NEWID#{generate_unique_id}")
     assert_success response
     assert response.params['transaction_id']
     assert_equal '1.00', response.params['gross_amount']
@@ -160,7 +168,7 @@ class PaypalTest < Test::Unit::TestCase
   def test_successful_verify
     assert response = @gateway.verify(@credit_card, @params)
     assert_success response
-    assert_equal "0.00", response.params['amount']
+    assert_equal '0.00', response.params['amount']
     assert_match %r{This card authorization verification is not a payment transaction}, response.message
   end
 
@@ -174,9 +182,9 @@ class PaypalTest < Test::Unit::TestCase
     amex_card = credit_card('371449635398431', brand: nil, verification_value: '1234')
     assert response = @gateway.verify(amex_card, @params)
     assert_success response
-    assert_equal "1.00", response.params['amount']
+    assert_equal '1.00', response.params['amount']
     assert_match %r{Success}, response.message
-    assert_success response.responses.last, "The void should succeed"
+    assert_success response.responses.last, 'The void should succeed'
   end
 
   def test_successful_transfer
@@ -188,7 +196,7 @@ class PaypalTest < Test::Unit::TestCase
   end
 
   def test_failed_transfer
-     # paypal allows a max transfer of $10,000
+    # paypal allows a max transfer of $10,000
     response = @gateway.transfer(1000001, 'joe@example.com')
     assert_failure response
   end
@@ -208,7 +216,7 @@ class PaypalTest < Test::Unit::TestCase
     assert_success response
 
     # You can only include up to 250 recipients
-    recipients = (1..251).collect {|i| [100, "person#{i}@example.com"]}
+    recipients = (1..251).collect { |i| [100, "person#{i}@example.com"] }
     response = @gateway.transfer(*recipients)
     assert_failure response
   end
@@ -247,4 +255,5 @@ class PaypalTest < Test::Unit::TestCase
     response2 = @gateway.purchase(@amount + 100, id_for_reference, @params)
     assert_success response2
   end
+
 end
